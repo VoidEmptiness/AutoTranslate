@@ -1,10 +1,10 @@
-import asyncio
+import asyncio 
 from telethon import TelegramClient, events
 import re
 import requests
 
 api_id = 12345678
-api_hash = "your_api_hash_here"
+api_hash = "you_api_hash"
 client = TelegramClient("session", api_id, api_hash)
 TARGET_CHAT = 123456789
 
@@ -17,6 +17,10 @@ layout = {
     ',':'б','.':'ю','&':'?'
 }
 
+EN_SHORT_STOPWORDS = {
+    "of", "in", "at", "on", "to", "by", "up", "an", "is", "it", "as", "be", "or", "if", "and", "the"
+}
+
 def convert(text):
     return ''.join(layout.get(c.lower(), c) for c in text)
 
@@ -25,48 +29,35 @@ def is_english_word(word):
         clean_word = re.sub(r"[^\w]", "", word.lower())
         if not clean_word:
             return False
-        response = requests.get(f"https://api.dictionaryapi.dev/api/v2/entries/en/{clean_word}")
-        if response.status_code == 200:
-            return True
-        return False
+        response = requests.get(f"https://api.dictionaryapi.dev/api/v2/entries/en/{clean_word}", timeout=2)
+        return response.status_code == 200
     except:
-        english_vowels = "aeiou"
-        has_english_vowels = any(c in english_vowels for c in word.lower())
-        converted = convert(word)
-        russian_vowels = "аеёиоуыэюя"
-        has_russian_vowels = any(c in russian_vowels for c in converted.lower())
-        return has_english_vowels and not has_russian_vowels and len(word) > 2
+        return False
 
 def is_layout(word):
     if len(word) < 1:
         return False
-    if not re.fullmatch(r"[a-zA-Z`\[\];',.&]+", word):
+    if not re.fullmatch(r"[a-zA-Z`\[\];',.&-]+", word):
         return False
     has_mapped_chars = any(c.lower() in layout for c in word)
     if not has_mapped_chars:
         return False
+
+    word_lower = word.lower()
+    if len(word) <= 2:
+        if word_lower in EN_SHORT_STOPWORDS:
+            return False
+        return True
+
     if is_english_word(word):
         return False
+
     converted = convert(word)
     vowels = "аеёиоуыэюя"
     vowel_count = sum(1 for c in converted if c in vowels)
     changed = sum(1 for c in word if c.lower() in layout)
     conversion_rate = changed / len(word)
-    if conversion_rate > 0.8:
-        if len(word) <= 2:
-            min_vowels = 0
-        else:
-            min_vowels = 1
-    elif len(word) <= 2:
-        if conversion_rate > 0.5:
-            min_vowels = 0
-        else:
-            min_vowels = 1
-    elif len(word) <= 3:
-        min_vowels = 1
-    else:
-        min_vowels = 2
-    return vowel_count >= min_vowels and changed / len(word) > 0.5
+    return vowel_count >= 1 and conversion_rate > 0.5
 
 @client.on(events.NewMessage(chats=TARGET_CHAT))
 async def handler(event):
