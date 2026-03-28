@@ -37,7 +37,7 @@ def is_english_word(word):
 def is_layout(word):
     if len(word) < 1:
         return False
-    if not re.fullmatch(r"[a-zA-Z`\[\];',.&-]+", word):
+    if not re.fullmatch(r"[a-zA-Z`\[\];',.&\-!]+", word):
         return False
     has_mapped_chars = any(c.lower() in layout for c in word)
     if not has_mapped_chars:
