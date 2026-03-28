@@ -22,7 +22,17 @@ EN_SHORT_STOPWORDS = {
 }
 
 def convert(text):
-    return ''.join(layout.get(c.lower(), c) for c in text)
+    result = []
+    for c in text:
+        lower = c.lower()
+        if lower in layout:
+            new_char = layout[lower]
+            if c.isupper():
+                new_char = new_char.upper()
+            result.append(new_char)
+        else:
+            result.append(c)
+    return ''.join(result)
 
 def is_english_word(word):
     try:
